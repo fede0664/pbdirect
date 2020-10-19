@@ -1,38 +1,38 @@
-import sbtcrossproject.CrossPlugin.autoImport.crossProject
-import sbtcrossproject.CrossPlugin.autoImport.CrossType.Full
+import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
+import sbtrelease._
 
-licenses in ThisBuild := ("MIT", url("http://opensource.org/licenses/MIT")) :: Nil
-organization in ThisBuild := "beyondthelines"
-bintrayOrganization in ThisBuild := Some("beyondthelines")
-bintrayPackageLabels in ThisBuild := Seq("scala", "protobuf")
+val shapelessV = "2.3.3"
+val catsV = "2.2.0"
+val scalaV = "2.13.2"
 
-val pbdirect = crossProject(JSPlatform, JVMPlatform)
-  .crossType(Full)
-  .in(file("."))
-  .enablePlugins(GitVersioning)
-  .settings(
-    name := "pbdirect",
-    scalaVersion := "2.11.12",
-    crossScalaVersions := Seq("2.11.12", "2.12.8", "2.13.0"),
-    libraryDependencies ++= Seq(
-      "com.chuusai"       %%% "shapeless"  % "2.3.3",
-      "org.typelevel"     %%% "cats-core"  % "2.0.0-M4",
-      "org.scalatest"     %%% "scalatest"  % "3.0.8" % Test
-    ),
-    resolvers += "Sonatype OSS Snapshots" at
-    "https://oss.sonatype.org/content/repositories/releases",
-    git.useGitDescribe := true
+lazy val commonSettings = Seq(
+  organization := "fede",
+  scalaVersion := scalaV,
+  crossScalaVersions := Seq(scalaVersion.value),
+  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full),
+  githubOwner := "fede0664",
+  githubRepository := "pbdirect",  
+  resolvers ++= Seq(
+    Resolver.githubPackages("fede0664")
+  ),
+  externalResolvers += "ExampleLibrary packages" at "https://maven.pkg.github.com/fede0664",
+)
+
+lazy val pbdirect = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure)
+  .withoutSuffixFor(JSPlatform)
+  // .in(file("."))
+  .settings(commonSettings,
+    libraryDependencies += "com.chuusai"       %%% "shapeless"  % shapelessV,
+    libraryDependencies += "org.typelevel"     %%% "cats-core"  % catsV,
   )
   .jvmSettings(
-    libraryDependencies ++= Seq(
-      "com.google.protobuf" % "protobuf-java"   % "3.9.0"
-    )
+    libraryDependencies += "com.google.protobuf" % "protobuf-java"   % "3.13.0"
   )
   .jsSettings(
-    libraryDependencies ++= Seq(
-      "io.github.cquiroz"    %%% "scala-java-time"        % "2.0.0-RC3" % "test",
-      "com.thesamet.scalapb" %%% "protobuf-runtime-scala" % "0.8.2"
-    )
+    libraryDependencies += "com.thesamet.scalapb" %%% "protobuf-runtime-scala" % "0.8.6"
   )
 
-addCommandAlias("fmt", ";scalafmt;test:scalafmt;scalafmtSbt")
+  lazy val root = project.in(file("."))
+    .settings(commonSettings, skip in publish := true)
+    .aggregate(pbdirect.jvm, pbdirect.js)
